@@ -1,4 +1,3 @@
-from http import server
 from os import error, pipe
 import socket
 import subprocess
@@ -14,6 +13,12 @@ EXIT = '100'
 LOGIN = '101'
 LOGOUT = '102'
 
+#system rights
+LOGGED_IN = False
+READ_RIGHTS = False
+WRITE_RIGHTS = False
+EXECUTE_RIGHTS = False
+
 host = socket.gethostname()
 port = 4000
 
@@ -24,29 +29,30 @@ except Exception as e:
     print("Failed to initialize server: "+str(e))
 
 class Server():
-    
-    
-    def server(self,login_p):
+
+    def initialize(Self, server_type):
+        print("Initializing server type: "+str(server_type))
         while True:
             #check login server first
-            out, err = login_p.communicate()
-            if out:
-                print(out)
-            if err:
-                print(err)
+            #out, err = login_p.communicate()
+            #if out:
+            #    print(out)
+            #if err:
+            #   print(err)
             #check for inputs from client
             data, addr = s.recvfrom(1024)
             data = data.decode('utf-8', 'strict')
             print("Message from " + str(addr) + ": " + data)
             if(data == EXIT):
                 s.sendto("Server is shutting down.".encode('utf-8'), addr)
-                self.close_server()
+                Self.close_server()
                 break
             elif(data == LOGIN):
-                self.login(addr)
-            elif(data == '999'):
-                print("test")
+                Self.login(addr)
+            elif(data == LOGOUT):
+                Self.logout(addr)
             else:
+                print("Invalid command received")
                 s.sendto("Command does not exist.".encode('utf-8'), addr)
         s.close()
 
@@ -57,8 +63,7 @@ class Server():
 
     def wait_for_response(s):
         data, addr = s.recvfrom(1024)
-        data = data.decode('utf-8')
-        return data
+        return data.decode('utf-8')
 
 
     def login(addr):
@@ -72,6 +77,10 @@ class Server():
             data, addr = s.recvfrom(1024)
             data = data.decode('utf-8', 'strict')
             if(data == 'password'):
+                global LOGGED_IN
+                global READ_RIGHTS
+                LOGGED_IN = True
+                READ_RIGHTS = True
                 print(str(usrname)+" logged in from "+str(addr) +".")
                 msg = "Logged in as "+str(usrname)
                 s.sendto(msg.encode('utf-8'), addr)
@@ -84,6 +93,21 @@ class Server():
             +str(usrname))
             msg = str(usrname)+" does not exist."
             s.sendto(msg.encode('utf-8'), addr)
+
+    def logout(addr):
+        global LOGGED_IN
+        global READ_RIGHTS
+        global WRITE_RIGHTS
+        global EXECUTE_RIGHTS
+        if(LOGGED_IN == True):
+            LOGGED_IN = False
+            READ_RIGHTS = False
+            WRITE_RIGHTS = False
+            EXECUTE_RIGHTS = False
+            s.sendto("Logged out from server.".encode('utf-8'), addr)
+            print("User logged out.")
+        else:
+            s.sendto("Not logged in.".encode('utf-8'), addr)
 
 
     def login_server():
@@ -98,16 +122,9 @@ class Server():
             sys.exit()
 
 
-    def initialize(server_type):
-        print("Initializing server type: "+str(server_type))
-
-
 
 if __name__ == '__main__':
     main_server = Server
     login_server = Server
 
-    login_server.initialize(SERV_LOGIN)
-    login_server.login(host)
-    
-    
+    login_server.initialize(login_server, SERV_LOGIN)
